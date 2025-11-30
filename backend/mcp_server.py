@@ -308,13 +308,95 @@ def main():
         logger.info(f"Running HTTP server on {host}:{port}")
         import uvicorn
         from starlette.applications import Starlette
-        from starlette.routing import Mount
+        from starlette.routing import Mount, Route
+        from starlette.responses import JSONResponse
+        from starlette.middleware.cors import CORSMiddleware
+        from starlette.requests import Request
+
+        # Health check endpoint
+        async def health_check(request):
+            return JSONResponse({
+                "status": "healthy",
+                "service": "z-image-turbo-mcp",
+                "transport": "streamable-http"
+            })
+
+        # API endpoint to list tools (for Test UI)
+        async def list_tools(request):
+            tools = await mcp.list_tools()
+            return JSONResponse({
+                "tools": [
+                    {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "inputSchema": tool.inputSchema
+                    } for tool in tools
+                ]
+            })
+
+        # API endpoint to call tools (for Test UI)
+        async def call_tool_api(request: Request):
+            try:
+                data = await request.json()
+                name = data.get("name")
+                arguments = data.get("arguments", {})
+                
+                if not name:
+                    return JSONResponse({"error": "Tool name required"}, status_code=400)
+
+                result = await mcp.call_tool(name, arguments)
+                
+                def serialize(obj):
+                    # Handle Pydantic v2
+                    if hasattr(obj, "model_dump"):
+                        return serialize(obj.model_dump())
+                    # Handle Pydantic v1
+                    if hasattr(obj, "dict") and callable(obj.dict):
+                        return serialize(obj.dict())
+                    # Handle Dataclasses
+                    if hasattr(obj, "__dataclass_fields__"):
+                        from dataclasses import asdict
+                        return serialize(asdict(obj))
+                    # Handle Lists/Tuples
+                    if isinstance(obj, (list, tuple)):
+                        return [serialize(item) for item in obj]
+                    # Handle Dictionaries
+                    if isinstance(obj, dict):
+                        return {k: serialize(v) for k, v in obj.items()}
+                    # Handle Enums
+                    if hasattr(obj, "value") and hasattr(obj, "name"):
+                        return obj.value
+                    # Fallback
+                    return obj
+
+                serialized_result = serialize(result)
+                
+                # Return just the content array, no extra wrapping
+                return JSONResponse({"content": serialized_result})
+
+            except Exception as e:
+                logger.error(f"Error calling tool {name}: {e}")
+                import traceback
+                traceback.print_exc()
+                return JSONResponse({"error": str(e)}, status_code=500)
 
         # Create Starlette app with MCP mounted
         app = Starlette(
             routes=[
+                Route("/health", health_check),
+                Route("/api/tools/list", list_tools, methods=["POST", "GET"]),
+                Route("/api/tools/call", call_tool_api, methods=["POST"]),
                 Mount("/mcp", app=mcp.sse_app()),
             ]
+        )
+
+        # Add CORS middleware to allow browser access
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
         )
 
         uvicorn.run(app, host=host, port=port)
