@@ -62,17 +62,24 @@ Open **`http://localhost:5173`** in your browser and start generating!
 
 ## 🔌 MCP Server (Model Context Protocol)
 
-Z-Image-Turbo now includes an **MCP server** that allows AI assistants and other clients to generate images through the standardized Model Context Protocol.
+Z-Image-Turbo now includes a powerful **MCP server** that exposes image generation capabilities through the standardized [Model Context Protocol](https://modelcontextprotocol.io). This allows AI assistants (like Claude), automation tools, and other MCP-compatible clients to generate images programmatically.
+
+### Why Use the MCP Server?
+
+- **AI Integration**: Let Claude or other AI assistants generate images directly during conversations
+- **Automation**: Build automated workflows that include image generation
+- **Remote Access**: Generate images from web clients or remote services (HTTP mode)
+- **Standardized API**: Use the same protocol across different AI tools and platforms
 
 ### Quick Start with MCP
 
-**Install MCP dependencies:**
+**1. Install MCP dependencies:**
 ```bash
 cd backend
 pip install -r requirements.txt
 ```
 
-**Run the MCP server:**
+**2. Run the MCP server:**
 
 For local integration (Claude Desktop, MCP Inspector):
 ```bash
@@ -80,13 +87,14 @@ cd backend
 ./run_mcp.sh --stdio
 ```
 
-For HTTP/web clients:
+For HTTP/web clients and remote access:
 ```bash
 cd backend
 ./run_mcp.sh --http --port 8001
+# Server available at http://localhost:8001/mcp
 ```
 
-**Configuration:**
+**3. Configuration:**
 Edit `backend/mcp_config.json` to set default transport mode and port:
 ```json
 {
@@ -98,26 +106,69 @@ Edit `backend/mcp_config.json` to set default transport mode and port:
 
 ### Available MCP Tools
 
-- **`generate_image`** - Generate images from text prompts with full parameter control
-- **`get_model_info`** - Get model status and configuration
-- **`update_model_config`** - Modify model settings dynamically
-- **Resource: `image://examples`** - Access curated example prompts
+| Tool | Description | Key Parameters |
+|------|-------------|----------------|
+| **`generate_image`** | Generate images from text prompts | `prompt`, `width`, `height`, `num_inference_steps`, `guidance_scale`, `seed` |
+| **`get_model_info`** | Get model status and configuration | None |
+| **`update_model_config`** | Modify model settings dynamically | `cache_dir`, `cpu_offload` |
+| **Resource: `image://examples`** | Access curated example prompts and tips | None |
+
+### Usage Example
+
+Once connected to Claude Desktop or another MCP client:
+
+```
+You: "Generate an image of a serene mountain landscape at sunset"
+
+Claude: [Uses generate_image tool]
+{
+  "prompt": "A serene mountain landscape at sunset with vibrant orange and purple skies",
+  "width": 1024,
+  "height": 768,
+  "num_inference_steps": 8
+}
+
+[Returns base64-encoded image]
+```
+
+### Transport Modes Comparison
+
+| Feature | Stdio Mode | HTTP/SSE Mode |
+|---------|-----------|---------------|
+| **Use Case** | Local desktop integration | Web clients, remote access |
+| **Best For** | Claude Desktop, MCP Inspector | Production APIs, multi-user |
+| **Network** | Local only | Network accessible |
+| **Setup** | Simpler | Requires port configuration |
 
 ### Claude Desktop Integration
 
-Add to your Claude Desktop config file:
+Add to your Claude Desktop config file (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS or `%APPDATA%\Claude\claude_desktop_config.json` on Windows):
+
 ```json
 {
   "mcpServers": {
     "z-image-turbo": {
       "command": "python",
-      "args": ["/path/to/z-image-turbo/backend/mcp_server.py", "--transport", "stdio"]
+      "args": ["/absolute/path/to/z-image-turbo/backend/mcp_server.py", "--transport", "stdio"]
     }
   }
 }
 ```
 
-📖 **Full MCP Documentation:** See [`backend/MCP_README.md`](backend/MCP_README.md) for detailed setup, examples, and API reference.
+**Important**: Replace `/absolute/path/to/z-image-turbo` with your actual installation path.
+
+After restarting Claude Desktop, you can ask Claude to generate images and it will use the MCP server automatically!
+
+### Testing Your MCP Server
+
+Test with the official MCP Inspector:
+```bash
+npx @modelcontextprotocol/inspector python backend/mcp_server.py --transport stdio
+```
+
+This opens a web interface where you can test all available tools and inspect requests/responses.
+
+📖 **Full MCP Documentation:** See [`backend/MCP_README.md`](backend/MCP_README.md) for detailed setup, Python client examples, troubleshooting, and complete API reference.
 
 ---
 
@@ -129,6 +180,13 @@ Add to your Claude Desktop config file:
 - **Fine Control** — Sliders for dimensions, inference steps, guidance scale, and seed
 - **Real-time Progress** — Live generation tracking
 - **Flexible Deployment** — Custom model cache directory, CPU offload option
+
+### MCP Server Integration
+- **🔌 Dual Transport Modes** — Support for both stdio (local) and HTTP/SSE (remote) connections
+- **🤖 AI Assistant Compatible** — Seamless integration with Claude Desktop and other MCP clients
+- **🛠️ Rich Tool Set** — Image generation, model info, configuration management, and example prompts
+- **⚙️ Configurable** — Customizable host, port, and transport settings via `mcp_config.json`
+- **🔒 Production Ready** — Stateless HTTP mode for scalable deployments
 
 ### Model (Z-Image-Turbo)
 - **⚡ Lightning Fast** — Optimized for **8-step generation**, achieving sub-second latency on enterprise GPUs.
