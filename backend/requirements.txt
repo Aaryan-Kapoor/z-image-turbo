@@ -7,4 +7,6 @@ protobuf
 sentencepiece
 mcp[cli]
 starlette
+gguf
+huggingface_hub
 git+https://github.com/huggingface/diffusers.git

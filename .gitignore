@@ -27,3 +27,13 @@ Thumbs.db
 
 # Config
 config.json
+
+# Model cache (should use configured cache_dir instead)
+models/
+models--*/
+backend/models/
+backend/models--*/
+
+# Nevermind
+dir2txt.py
+output.txt

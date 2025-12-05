@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Zap,
   Image as ImageIcon,
@@ -11,7 +11,10 @@ import {
   X,
   Sparkles,
   Save,
-  Github
+  Github,
+  Package,
+  ChevronDown,
+  Check
 } from 'lucide-react'
 import './App.css'
 
@@ -29,15 +32,160 @@ function App() {
     seed: -1
   })
 
+  // Model management state
+  const [availableModels, setAvailableModels] = useState([])
+  const [loadingModels, setLoadingModels] = useState(false)
+  const [currentModelId, setCurrentModelId] = useState('Tongyi-MAI/Z-Image-Turbo')
+  const [currentGgufFilename, setCurrentGgufFilename] = useState(null)
+  const [downloadProgress, setDownloadProgress] = useState({})
+  const [showModelDropdown, setShowModelDropdown] = useState(false)
+  const modelDropdownRef = useRef(null)
+
   // Fetch initial settings
   useEffect(() => {
     fetch('http://localhost:8000/settings')
       .then(res => res.json())
       .then(data => {
         if (data.cache_dir) setModelPath(data.cache_dir)
+        if (data.model_id) setCurrentModelId(data.model_id)
+        if (data.gguf_filename) setCurrentGgufFilename(data.gguf_filename)
       })
       .catch(err => console.error("Failed to fetch settings", err))
   }, [])
+
+  // Fetch available GGUF models
+  const fetchAvailableModels = useCallback(async () => {
+    setLoadingModels(true)
+    try {
+      const res = await fetch('http://localhost:8000/models/available')
+      if (res.ok) {
+        const data = await res.json()
+        setAvailableModels(data.models || [])
+      }
+    } catch (err) {
+      console.error("Failed to fetch available models", err)
+    } finally {
+      setLoadingModels(false)
+    }
+  }, [])
+
+  // Fetch models on component mount
+  useEffect(() => {
+    fetchAvailableModels()
+  }, [fetchAvailableModels])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (modelDropdownRef.current && !modelDropdownRef.current.contains(event.target)) {
+        setShowModelDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Download a model
+  const downloadModel = async (filename) => {
+    try {
+      setDownloadProgress(prev => ({
+        ...prev,
+        [filename]: { status: 'starting', progress: 0, message: 'Starting download...' }
+      }))
+
+      const res = await fetch('http://localhost:8000/models/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename })
+      })
+      if (res.ok) {
+        pollDownloadProgress(filename)
+      } else {
+        const data = await res.json()
+        throw new Error(data.detail || 'Download failed')
+      }
+    } catch (err) {
+      setDownloadProgress(prev => ({
+        ...prev,
+        [filename]: { status: 'error', progress: 0, message: err.message }
+      }))
+    }
+  }
+
+  // Poll download progress
+  const pollDownloadProgress = (filename) => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`http://localhost:8000/models/download-progress/${encodeURIComponent(filename)}`)
+        if (res.ok) {
+          const data = await res.json()
+          setDownloadProgress(prev => ({
+            ...prev,
+            [filename]: data
+          }))
+
+          if (data.status === 'completed' || data.status === 'error') {
+            clearInterval(interval)
+          }
+        }
+      } catch (err) {
+        clearInterval(interval)
+      }
+    }, 1000)
+  }
+
+  // Select a model (set it as active)
+  const selectModel = async (model) => {
+    try {
+      const res = await fetch('http://localhost:8000/settings/model-path', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cache_dir: modelPath,
+          model_id: 'AaryanK/Z-Image-Turbo-GGUF',
+          gguf_filename: model.filename
+        })
+      })
+      if (res.ok) {
+        setCurrentModelId('AaryanK/Z-Image-Turbo-GGUF')
+        setCurrentGgufFilename(model.filename)
+        setShowModelDropdown(false)
+      }
+    } catch (err) {
+      alert('Error selecting model: ' + err.message)
+    }
+  }
+
+  // Use original model (non-GGUF)
+  const useOriginalModel = async () => {
+    try {
+      const res = await fetch('http://localhost:8000/settings/model-path', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cache_dir: modelPath,
+          model_id: 'Tongyi-MAI/Z-Image-Turbo',
+          gguf_filename: ''
+        })
+      })
+      if (res.ok) {
+        setCurrentModelId('Tongyi-MAI/Z-Image-Turbo')
+        setCurrentGgufFilename(null)
+        setShowModelDropdown(false)
+      }
+    } catch (err) {
+      alert('Error selecting model: ' + err.message)
+    }
+  }
+
+  // Get display name for current model
+  const getCurrentModelDisplayName = () => {
+    if (currentGgufFilename) {
+      const model = availableModels.find(m => m.filename === currentGgufFilename)
+      return model ? model.quantization : currentGgufFilename
+    }
+    return 'Original (FP16)'
+  }
 
   const generate = async () => {
     if (!prompt) return
@@ -121,7 +269,7 @@ function App() {
               backgroundColor: 'var(--bg-tertiary)'
             }}>
               <h2 style={{ fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Settings size={20} /> Application Settings
+                <Settings size={20} /> Settings
               </h2>
               <button onClick={() => setShowSettings(false)} style={{
                 padding: '8px',
@@ -156,7 +304,7 @@ function App() {
                   </div>
                 </div>
                 <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                  Leave empty to use default Hugging Face cache. Changing this will trigger a model reload.
+                  Leave empty to use default Hugging Face cache.
                 </p>
               </div>
             </div>
@@ -193,7 +341,7 @@ function App() {
                   gap: '8px'
                 }}
               >
-                <Save size={16} /> Save Changes
+                <Save size={16} /> Save
               </button>
             </div>
           </div>
@@ -296,10 +444,189 @@ function App() {
           padding: '24px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '32px'
+          gap: '24px'
         }}>
+          {/* Model Selector */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
+              <Package size={14} />
+              <h2 style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>
+                Model
+              </h2>
+            </div>
+
+            <div ref={modelDropdownRef} style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowModelDropdown(!showModelDropdown)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  backgroundColor: 'var(--bg-tertiary)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-sm)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 500 }}>{getCurrentModelDisplayName()}</span>
+                </div>
+                <ChevronDown
+                  size={16}
+                  style={{
+                    transition: 'transform 0.2s',
+                    transform: showModelDropdown ? 'rotate(180deg)' : 'rotate(0deg)'
+                  }}
+                />
+              </button>
+
+              {/* Dropdown Menu */}
+              {showModelDropdown && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  marginTop: '4px',
+                  backgroundColor: 'var(--bg-secondary)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-sm)',
+                  boxShadow: 'var(--shadow-lg)',
+                  zIndex: 40,
+                  maxHeight: '300px',
+                  overflowY: 'auto'
+                }}>
+                  {/* Original Model */}
+                  <button
+                    onClick={useOriginalModel}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      backgroundColor: currentModelId === 'Tongyi-MAI/Z-Image-Turbo' ? 'rgba(34, 197, 94, 0.1)' : 'transparent',
+                      borderBottom: '1px solid var(--border)',
+                      transition: 'background 0.15s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = currentModelId === 'Tongyi-MAI/Z-Image-Turbo' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255,255,255,0.05)'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = currentModelId === 'Tongyi-MAI/Z-Image-Turbo' ? 'rgba(34, 197, 94, 0.1)' : 'transparent'}
+                  >
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: 500, textAlign: 'left' }}>Original (FP16)</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'left' }}>~12 GB - Full precision</div>
+                    </div>
+                    {currentModelId === 'Tongyi-MAI/Z-Image-Turbo' && <Check size={14} style={{ color: '#22c55e' }} />}
+                  </button>
+
+                  {/* Divider */}
+                  <div style={{ padding: '8px 12px', fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    GGUF Quantized
+                  </div>
+
+                  {/* GGUF Models */}
+                  {loadingModels ? (
+                    <div style={{ padding: '16px', display: 'flex', justifyContent: 'center' }}>
+                      <Loader2 size={16} className="animate-spin" />
+                    </div>
+                  ) : availableModels.length === 0 ? (
+                    <div style={{ padding: '12px', textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)' }}>
+                      No GGUF models available
+                    </div>
+                  ) : (
+                    availableModels.map(model => {
+                      const progress = downloadProgress[model.filename]
+                      const isActive = currentGgufFilename === model.filename
+                      const isDownloading = progress && (progress.status === 'starting' || progress.status === 'downloading')
+                      const isCompleted = progress && progress.status === 'completed'
+                      const isError = progress && progress.status === 'error'
+
+                      return (
+                        <div
+                          key={model.filename}
+                          style={{
+                            padding: '10px 12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            backgroundColor: isActive ? 'rgba(34, 197, 94, 0.1)' : 'transparent',
+                            borderBottom: '1px solid var(--border)',
+                            transition: 'background 0.15s'
+                          }}
+                          onMouseEnter={e => {
+                            if (!isDownloading) e.currentTarget.style.backgroundColor = isActive ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255,255,255,0.05)'
+                          }}
+                          onMouseLeave={e => {
+                            if (!isDownloading) e.currentTarget.style.backgroundColor = isActive ? 'rgba(34, 197, 94, 0.1)' : 'transparent'
+                          }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '13px', fontWeight: 500 }}>{model.quantization}</div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', gap: '8px' }}>
+                              <span>{model.size_gb > 0 ? `${model.size_gb} GB` : ''}</span>
+                              <span style={{ opacity: 0.7 }}>{model.description}</span>
+                            </div>
+                            {isError && (
+                              <div style={{ fontSize: '10px', color: '#ef4444', marginTop: '2px' }}>
+                                Error: {progress.message}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ marginLeft: '8px', flexShrink: 0 }}>
+                            {isDownloading ? (
+                              <Loader2 size={14} className="animate-spin" style={{ color: 'var(--text-muted)' }} />
+                            ) : isActive ? (
+                              <Check size={14} style={{ color: '#22c55e' }} />
+                            ) : isCompleted ? (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); selectModel(model) }}
+                                style={{
+                                  padding: '4px 8px',
+                                  fontSize: '11px',
+                                  fontWeight: 500,
+                                  backgroundColor: 'white',
+                                  color: 'black',
+                                  borderRadius: '4px'
+                                }}
+                              >
+                                Use
+                              </button>
+                            ) : (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); downloadModel(model.filename) }}
+                                style={{
+                                  padding: '4px 8px',
+                                  fontSize: '11px',
+                                  fontWeight: 500,
+                                  backgroundColor: 'var(--bg-tertiary)',
+                                  border: '1px solid var(--border)',
+                                  borderRadius: '4px',
+                                  color: 'white',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                <Download size={10} />
+                                Get
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Parameters Section */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
               <Sparkles size={14} />
               <h2 style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>
                 Parameters

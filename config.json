@@ -1,4 +1,6 @@
 {
   "cache_dir": "E:\\ImageModels",
-  "model_id": "Tongyi-MAI/Z-Image-Turbo"
+  "model_id": "Tongyi-MAI/Z-Image-Turbo",
+  "gguf_filename": null,
+  "cpu_offload": false
 }

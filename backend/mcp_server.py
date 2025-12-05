@@ -32,11 +32,12 @@ try:
     from mcp.server.fastmcp import FastMCP
     from mcp.types import ImageContent
     import torch
-    from diffusers import DiffusionPipeline
+    from diffusers import DiffusionPipeline, ZImagePipeline, ZImageTransformer2DModel, GGUFQuantizationConfig
     from PIL import Image
 except ImportError as e:
     logger.error(f"Failed to import required packages: {e}")
     logger.error("Please install dependencies: pip install -r backend/requirements.txt")
+    logger.error("For GGUF support: pip install git+https://github.com/huggingface/diffusers.git")
     sys.exit(1)
 
 
@@ -52,6 +53,7 @@ def load_config():
         return {
             "cache_dir": "./models",
             "model_id": "Tongyi-MAI/Z-Image-Turbo",
+            "gguf_filename": None,
             "cpu_offload": False
         }
 
@@ -89,24 +91,58 @@ request_semaphore = None  # Will be initialized in main()
 def _load_pipeline_internal():
     """Internal function to load the pipeline (must be called with lock held)"""
     global pipe, last_used_time
-    
+
     logger.info("Loading Z-Image-Turbo model... (this may take 30-60 seconds on first run)")
     model_id = config.get("model_id", "Tongyi-MAI/Z-Image-Turbo")
+    gguf_filename = config.get("gguf_filename")
     cache_dir = config.get("cache_dir", "./models")
     cpu_offload = config.get("cpu_offload", False)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     dtype = torch.bfloat16 if device == "cuda" else torch.float32
 
-    new_pipe = DiffusionPipeline.from_pretrained(
-        model_id,
-        torch_dtype=dtype,
-        cache_dir=cache_dir
-    )
+    # GGUF Loading Logic
+    is_gguf = gguf_filename or model_id.endswith(".gguf")
+    if is_gguf:
+        logger.info(f"Loading GGUF model: {model_id} ({gguf_filename if gguf_filename else 'local'})")
 
-    if cpu_offload and device == "cuda":
+        # Build GGUF URL for HuggingFace
+        gguf_url = f"https://huggingface.co/{model_id}/blob/main/{gguf_filename}"
+        logger.info(f"Loading GGUF transformer from: {gguf_url}")
+
+        # Step 1: Load the quantized transformer from GGUF
+        transformer = ZImageTransformer2DModel.from_single_file(
+            gguf_url,
+            quantization_config=GGUFQuantizationConfig(compute_dtype=dtype),
+            torch_dtype=dtype,
+        )
+        logger.info("GGUF transformer loaded successfully")
+
+        # Step 2: Load the full pipeline from original model, inject quantized transformer
+        original_model_id = "Tongyi-MAI/Z-Image-Turbo"
+        logger.info(f"Loading pipeline components from {original_model_id}...")
+        new_pipe = ZImagePipeline.from_pretrained(
+            original_model_id,
+            transformer=transformer,
+            torch_dtype=dtype,
+            cache_dir=cache_dir
+        )
+        logger.info("Pipeline assembled with GGUF transformer")
+    else:
+        # Standard Loading
+        new_pipe = ZImagePipeline.from_pretrained(
+            model_id,
+            torch_dtype=dtype,
+            cache_dir=cache_dir
+        )
+
+    # For GGUF models, always use enable_model_cpu_offload (recommended)
+    if is_gguf and device == "cuda":
+        logger.info("Enabling CPU offload for GGUF model (recommended)")
+        new_pipe.enable_model_cpu_offload()
+    elif cpu_offload and device == "cuda":
         logger.info("Enabling CPU offload for memory optimization")
-        new_pipe.enable_sequential_cpu_offload()
+        new_pipe.enable_model_cpu_offload()
     else:
         new_pipe = new_pipe.to(device)
 
@@ -352,7 +388,9 @@ async def get_model_info() -> dict:
 @mcp.tool()
 async def update_model_config(
     cache_dir: Optional[str] = None,
-    cpu_offload: Optional[bool] = None
+    cpu_offload: Optional[bool] = None,
+    model_id: Optional[str] = None,
+    gguf_filename: Optional[str] = None
 ) -> dict:
     """
     Update the model configuration settings.
@@ -361,6 +399,8 @@ async def update_model_config(
     Args:
         cache_dir: Path to the model cache directory (optional)
         cpu_offload: Enable CPU offload for memory optimization (optional)
+        model_id: Hugging Face model ID or local path (optional)
+        gguf_filename: Specific GGUF filename to load (optional)
 
     Returns:
         Updated configuration dictionary
@@ -375,6 +415,12 @@ async def update_model_config(
 
     if cpu_offload is not None:
         config["cpu_offload"] = cpu_offload
+
+    if model_id is not None:
+        config["model_id"] = model_id
+
+    if gguf_filename is not None:
+        config["gguf_filename"] = gguf_filename
 
     # Save updated config
     try:
