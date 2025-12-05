@@ -343,6 +343,7 @@ async def get_model_info() -> dict:
             if is_loaded:
                 result["gpu_memory_allocated_gb"] = round(torch.cuda.memory_allocated() / 1024**3, 2)
         except Exception:
+            # GPU info is optional; ignore errors if unavailable
             pass
     
     return result
