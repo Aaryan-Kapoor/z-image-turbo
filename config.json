@@ -1,6 +1,6 @@
 {
   "cache_dir": "E:\\ImageModels",
-  "model_id": "Tongyi-MAI/Z-Image-Turbo",
-  "gguf_filename": null,
+  "model_id": "AaryanK/Z-Image-Turbo-GGUF",
+  "gguf_filename": "z_image_turbo-Q4_K_M.gguf",
   "cpu_offload": false
 }

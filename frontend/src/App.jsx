@@ -14,7 +14,8 @@ import {
   Github,
   Package,
   ChevronDown,
-  Check
+  Check,
+  Sliders
 } from 'lucide-react'
 import './App.css'
 
@@ -447,37 +448,56 @@ function App() {
           gap: '24px'
         }}>
           {/* Model Selector */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
-              <Package size={14} />
-              <h2 style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Package size={14} style={{ color: 'var(--text-secondary)' }} />
+              <h2 style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-secondary)' }}>
                 Model
               </h2>
             </div>
 
             <div ref={modelDropdownRef} style={{ position: 'relative' }}>
+              {/* Main Trigger Card */}
               <button
                 onClick={() => setShowModelDropdown(!showModelDropdown)}
+                className="hover-glow glass-panel"
                 style={{
                   width: '100%',
                   padding: '12px',
-                  backgroundColor: 'var(--bg-tertiary)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-sm)',
+                  borderRadius: '12px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  textAlign: 'left',
+                  position: 'relative',
+                  overflow: 'hidden'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500 }}>{getCurrentModelDisplayName()}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', position: 'relative', zIndex: 1 }}>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'white' }}>
+                    {getCurrentModelDisplayName()}
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {currentGgufFilename ? (
+                      <>
+                        <span style={{ color: 'var(--text-secondary)' }}>● Efficient</span>
+                        <span>Quantized</span>
+                      </>
+                    ) : (
+                      <>
+                        <span style={{ color: 'white' }}>● Precision</span>
+                        <span>FP16</span>
+                      </>
+                    )}
+                  </div>
                 </div>
+
                 <ChevronDown
                   size={16}
                   style={{
-                    transition: 'transform 0.2s',
+                    color: 'var(--text-secondary)',
+                    transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                     transform: showModelDropdown ? 'rotate(180deg)' : 'rotate(0deg)'
                   }}
                 />
@@ -485,140 +505,174 @@ function App() {
 
               {/* Dropdown Menu */}
               {showModelDropdown && (
-                <div style={{
+                <div className="glass-panel animate-fade-in custom-scrollbar" style={{
                   position: 'absolute',
-                  top: '100%',
+                  top: 'calc(100% + 12px)',
                   left: 0,
                   right: 0,
-                  marginTop: '4px',
-                  backgroundColor: 'var(--bg-secondary)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-sm)',
-                  boxShadow: 'var(--shadow-lg)',
-                  zIndex: 40,
-                  maxHeight: '300px',
-                  overflowY: 'auto'
+                  borderRadius: '16px',
+                  zIndex: 100,
+                  maxHeight: '400px',
+                  overflowY: 'auto',
+                  boxShadow: '0 20px 40px -5px rgba(0,0,0,0.4)',
+                  padding: '8px'
                 }}>
-                  {/* Original Model */}
-                  <button
-                    onClick={useOriginalModel}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      backgroundColor: currentModelId === 'Tongyi-MAI/Z-Image-Turbo' ? 'rgba(34, 197, 94, 0.1)' : 'transparent',
-                      borderBottom: '1px solid var(--border)',
-                      transition: 'background 0.15s'
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.backgroundColor = currentModelId === 'Tongyi-MAI/Z-Image-Turbo' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255,255,255,0.05)'}
-                    onMouseLeave={e => e.currentTarget.style.backgroundColor = currentModelId === 'Tongyi-MAI/Z-Image-Turbo' ? 'rgba(34, 197, 94, 0.1)' : 'transparent'}
-                  >
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: 500, textAlign: 'left' }}>Original (FP16)</div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'left' }}>~12 GB - Full precision</div>
+                  {/* Section: Original */}
+                  <div style={{ padding: '8px' }}>
+                    <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', paddingLeft: '8px', textTransform: 'uppercase' }}>
+                      Precision Engines
                     </div>
-                    {currentModelId === 'Tongyi-MAI/Z-Image-Turbo' && <Check size={14} style={{ color: '#22c55e' }} />}
-                  </button>
-
-                  {/* Divider */}
-                  <div style={{ padding: '8px 12px', fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    GGUF Quantized
+                    <button
+                      onClick={useOriginalModel}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        borderRadius: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        background: currentModelId === 'Tongyi-MAI/Z-Image-Turbo' ? 'rgba(255,255,255,0.08)' : 'transparent',
+                        border: currentModelId === 'Tongyi-MAI/Z-Image-Turbo' ? '1px solid rgba(255,255,255,0.2)' : '1px solid transparent',
+                        transition: 'all 0.2s',
+                        cursor: 'pointer'
+                      }}
+                      className="premium-hover"
+                    >
+                      <div style={{ textAlign: 'left', flex: 1 }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'white' }}>Original (BF16)</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Max Quality • 12GB VRAM</div>
+                      </div>
+                      {currentModelId === 'Tongyi-MAI/Z-Image-Turbo' && <Check size={16} color="white" />}
+                    </button>
                   </div>
 
-                  {/* GGUF Models */}
-                  {loadingModels ? (
-                    <div style={{ padding: '16px', display: 'flex', justifyContent: 'center' }}>
-                      <Loader2 size={16} className="animate-spin" />
+                  {/* Section: GGUF */}
+                  <div style={{ padding: '8px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', paddingLeft: '8px' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                        Optimized Engines (GGUF)
+                      </div>
+                      <button onClick={(e) => { e.stopPropagation(); fetchAvailableModels() }} style={{ opacity: 0.5, cursor: 'pointer' }}>
+                        <RefreshCw size={12} className={loadingModels ? 'animate-spin' : ''} style={{ color: 'var(--text-muted)' }} />
+                      </button>
                     </div>
-                  ) : availableModels.length === 0 ? (
-                    <div style={{ padding: '12px', textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)' }}>
-                      No GGUF models available
-                    </div>
-                  ) : (
-                    availableModels.map(model => {
-                      const progress = downloadProgress[model.filename]
-                      const isActive = currentGgufFilename === model.filename
-                      const isDownloading = progress && (progress.status === 'starting' || progress.status === 'downloading')
-                      const isCompleted = progress && progress.status === 'completed'
-                      const isError = progress && progress.status === 'error'
 
-                      return (
-                        <div
-                          key={model.filename}
-                          style={{
-                            padding: '10px 12px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            backgroundColor: isActive ? 'rgba(34, 197, 94, 0.1)' : 'transparent',
-                            borderBottom: '1px solid var(--border)',
-                            transition: 'background 0.15s'
-                          }}
-                          onMouseEnter={e => {
-                            if (!isDownloading) e.currentTarget.style.backgroundColor = isActive ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255,255,255,0.05)'
-                          }}
-                          onMouseLeave={e => {
-                            if (!isDownloading) e.currentTarget.style.backgroundColor = isActive ? 'rgba(34, 197, 94, 0.1)' : 'transparent'
-                          }}
-                        >
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '13px', fontWeight: 500 }}>{model.quantization}</div>
-                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', gap: '8px' }}>
-                              <span>{model.size_gb > 0 ? `${model.size_gb} GB` : ''}</span>
-                              <span style={{ opacity: 0.7 }}>{model.description}</span>
-                            </div>
-                            {isError && (
-                              <div style={{ fontSize: '10px', color: '#ef4444', marginTop: '2px' }}>
-                                Error: {progress.message}
+                    {availableModels.length === 0 ? (
+                      <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
+                        {loadingModels ? 'Loading models...' : 'No GGUF models found'}
+                      </div>
+                    ) : (
+                      availableModels.map(model => {
+                        const progress = downloadProgress[model.filename]
+                        const isActive = currentGgufFilename === model.filename
+                        const isDownloading = progress && (progress.status === 'starting' || progress.status === 'downloading')
+                        const isCompleted = progress && progress.status === 'completed'
+                        const isRecommended = model.filename.includes('Q4_K_M')
+
+                        return (
+                          <div
+                            key={model.filename}
+                            onClick={() => {
+                              if (isCompleted && !isActive) selectModel(model)
+                            }}
+                            style={{
+                              width: '100%',
+                              padding: '12px',
+                              borderRadius: '12px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '12px',
+                              marginBottom: '4px',
+                              background: isActive ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                              border: isActive ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid transparent',
+                              position: 'relative',
+                              overflow: 'hidden',
+                              cursor: (isCompleted || (!isCompleted && !isDownloading)) ? 'pointer' : 'default'
+                            }}
+                            className="premium-hover"
+                          >
+                            {/* Progress Bar Background */}
+                            {isDownloading && (
+                              <div style={{
+                                position: 'absolute',
+                                bottom: 0,
+                                left: 0,
+                                height: '100%',
+                                width: `${progress.progress}%`,
+                                background: 'rgba(255, 255, 255, 0.1)',
+                                zIndex: 0,
+                                transition: 'width 0.3s'
+                              }} />
+                            )}
+
+                            {/* Content */}
+                            <div style={{ textAlign: 'left', flex: 1, zIndex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: '13px', fontWeight: 600, color: 'white' }}>
+                                  {model.quantization}
+                                </span>
+                                {isRecommended && (
+                                  <span style={{
+                                    fontSize: '9px', fontWeight: 700, padding: '2px 6px',
+                                    borderRadius: '4px', background: 'white', color: 'black'
+                                  }}>
+                                    BEST
+                                  </span>
+                                )}
                               </div>
-                            )}
+                              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                {isDownloading ? (
+                                  <span style={{ color: 'white' }}>{Math.round(progress.progress)}% • {progress.message}</span>
+                                ) : (
+                                  <span>{model.size_gb} GB • {model.description || 'Optimized'}</span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Action */}
+                            <div style={{ zIndex: 1 }}>
+                              {isActive && <Check size={16} color="white" />}
+                              {!isActive && !isCompleted && !isDownloading && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    downloadModel(model.filename)
+                                  }}
+                                  style={{
+                                    padding: '6px 10px',
+                                    borderRadius: '6px',
+                                    background: 'rgba(255,255,255,0.1)',
+                                    color: 'white',
+                                    fontSize: '10px',
+                                    fontWeight: 600,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    border: 'none',
+                                    cursor: 'pointer'
+                                  }}
+                                  className="hover-glow"
+                                >
+                                  <Download size={10} /> GET
+                                </button>
+                              )}
+                            </div>
                           </div>
-                          <div style={{ marginLeft: '8px', flexShrink: 0 }}>
-                            {isDownloading ? (
-                              <Loader2 size={14} className="animate-spin" style={{ color: 'var(--text-muted)' }} />
-                            ) : isActive ? (
-                              <Check size={14} style={{ color: '#22c55e' }} />
-                            ) : isCompleted ? (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); selectModel(model) }}
-                                style={{
-                                  padding: '4px 8px',
-                                  fontSize: '11px',
-                                  fontWeight: 500,
-                                  backgroundColor: 'white',
-                                  color: 'black',
-                                  borderRadius: '4px'
-                                }}
-                              >
-                                Use
-                              </button>
-                            ) : (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); downloadModel(model.filename) }}
-                                style={{
-                                  padding: '4px 8px',
-                                  fontSize: '11px',
-                                  fontWeight: 500,
-                                  backgroundColor: 'var(--bg-tertiary)',
-                                  border: '1px solid var(--border)',
-                                  borderRadius: '4px',
-                                  color: 'white',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '4px'
-                                }}
-                              >
-                                <Download size={10} />
-                                Get
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })
-                  )}
+                        )
+                      })
+                    )}
+                  </div>
+
+                  {/* Footer */}
+                  <div style={{
+                    padding: '12px 16px',
+                    borderTop: '1px solid rgba(255,255,255,0.06)',
+                    background: 'rgba(0,0,0,0.2)'
+                  }}>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                      Lower quantization = smaller size, faster loading, lower VRAM
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -627,7 +681,7 @@ function App() {
           {/* Parameters Section */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
-              <Sparkles size={14} />
+              <Sliders size={14} />
               <h2 style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>
                 Parameters
               </h2>
@@ -831,11 +885,12 @@ function App() {
         </div>
 
         {/* Sidebar Footer */}
-        <div style={{
+        < div style={{
           padding: '16px 24px',
           borderTop: '1px solid var(--border)',
           backgroundColor: 'var(--bg-tertiary)'
-        }}>
+        }
+        }>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
             <div style={{
               width: '8px',
@@ -846,11 +901,11 @@ function App() {
             }}></div>
             <span>{loading ? 'Generating...' : 'System Ready'}</span>
           </div>
-        </div>
-      </div>
+        </div >
+      </div >
 
       {/* Main Content */}
-      <div style={{
+      < div style={{
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
@@ -859,7 +914,7 @@ function App() {
       }}>
 
         {/* Top Bar */}
-        <div style={{
+        < div style={{
           height: '64px',
           borderBottom: '1px solid var(--border)',
           display: 'flex',
@@ -871,10 +926,10 @@ function App() {
           <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-secondary)' }}>
             Workspace / <span style={{ color: 'white' }}>New Generation</span>
           </div>
-        </div>
+        </div >
 
         {/* Image Display Area */}
-        <div style={{
+        < div style={{
           flex: 1,
           display: 'flex',
           alignItems: 'center',
@@ -884,116 +939,117 @@ function App() {
           position: 'relative',
           backgroundColor: 'var(--bg-primary)'
         }}>
-          {image ? (
-            <div style={{
-              position: 'relative',
-              maxWidth: '100%',
-              maxHeight: '100%',
-              borderRadius: 'var(--radius-md)',
-              overflow: 'hidden',
-              boxShadow: 'var(--shadow-lg)',
-              border: '1px solid var(--border)'
-            }} className="animate-fade-in image-container">
-              <img
-                src={image}
-                alt="Generated"
-                style={{
-                  maxHeight: 'calc(100vh - 300px)',
-                  objectFit: 'contain',
-                  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                  display: 'block'
-                }}
-              />
-
-              <div className="image-overlay" style={{
-                position: 'absolute',
-                inset: 0,
-                backgroundColor: 'rgba(0, 0, 0, 0.4)',
-                opacity: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '16px',
-                backdropFilter: 'blur(2px)',
-                transition: 'opacity 0.2s'
-              }}>
-                <button
-                  style={{
-                    padding: '12px',
-                    backgroundColor: 'white',
-                    color: 'black',
-                    borderRadius: '50%',
-                    boxShadow: 'var(--shadow-lg)',
-                    transition: 'transform 0.2s'
-                  }}
-                  title="Download"
-                  onClick={() => {
-                    const link = document.createElement('a')
-                    link.href = image
-                    link.download = `z-image-${Date.now()}.png`
-                    link.click()
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
-                  onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                >
-                  <Download size={24} />
-                </button>
-                <button
-                  style={{
-                    padding: '12px',
-                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                    color: 'white',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    borderRadius: '50%',
-                    backdropFilter: 'blur(8px)',
-                    transition: 'all 0.2s'
-                  }}
-                  title="View Fullscreen"
-                  onClick={() => window.open(image, '_blank')}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.7)'
-                    e.currentTarget.style.transform = 'scale(1.1)'
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.5)'
-                    e.currentTarget.style.transform = 'scale(1)'
-                  }}
-                >
-                  <Maximize2 size={24} />
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '24px',
-              color: 'var(--text-secondary)',
-              opacity: 0.5,
-              userSelect: 'none'
-            }}>
+          {
+            image ? (
               <div style={{
-                width: '192px',
-                height: '192px',
-                borderRadius: 'var(--radius-lg)',
-                backgroundColor: 'var(--bg-secondary)',
-                border: '2px dashed var(--border)',
+                position: 'relative',
+                maxWidth: '100%',
+                maxHeight: '100%',
+                borderRadius: 'var(--radius-md)',
+                overflow: 'hidden',
+                boxShadow: 'var(--shadow-lg)',
+                border: '1px solid var(--border)'
+              }} className="animate-fade-in image-container" >
+                <img
+                  src={image}
+                  alt="Generated"
+                  style={{
+                    maxHeight: 'calc(100vh - 300px)',
+                    objectFit: 'contain',
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'block'
+                  }}
+                />
+
+                <div className="image-overlay" style={{
+                  position: 'absolute',
+                  inset: 0,
+                  backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                  opacity: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '16px',
+                  backdropFilter: 'blur(2px)',
+                  transition: 'opacity 0.2s'
+                }}>
+                  <button
+                    style={{
+                      padding: '12px',
+                      backgroundColor: 'white',
+                      color: 'black',
+                      borderRadius: '50%',
+                      boxShadow: 'var(--shadow-lg)',
+                      transition: 'transform 0.2s'
+                    }}
+                    title="Download"
+                    onClick={() => {
+                      const link = document.createElement('a')
+                      link.href = image
+                      link.download = `z-image-${Date.now()}.png`
+                      link.click()
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                    <Download size={24} />
+                  </button>
+                  <button
+                    style={{
+                      padding: '12px',
+                      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                      color: 'white',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      borderRadius: '50%',
+                      backdropFilter: 'blur(8px)',
+                      transition: 'all 0.2s'
+                    }}
+                    title="View Fullscreen"
+                    onClick={() => window.open(image, '_blank')}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.7)'
+                      e.currentTarget.style.transform = 'scale(1.1)'
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.5)'
+                      e.currentTarget.style.transform = 'scale(1)'
+                    }}
+                  >
+                    <Maximize2 size={24} />
+                  </button>
+                </div>
+              </div >
+            ) : (
+              <div style={{
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'center'
+                gap: '24px',
+                color: 'var(--text-secondary)',
+                opacity: 0.5,
+                userSelect: 'none'
               }}>
-                <ImageIcon size={64} strokeWidth={1} />
+                <div style={{
+                  width: '192px',
+                  height: '192px',
+                  borderRadius: 'var(--radius-lg)',
+                  backgroundColor: 'var(--bg-secondary)',
+                  border: '2px dashed var(--border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <ImageIcon size={64} strokeWidth={1} />
+                </div>
+                <p style={{ fontSize: '18px', fontWeight: 300, letterSpacing: '0.5px' }}>
+                  Enter a prompt to begin creation
+                </p>
               </div>
-              <p style={{ fontSize: '18px', fontWeight: 300, letterSpacing: '0.5px' }}>
-                Enter a prompt to begin creation
-              </p>
-            </div>
-          )}
-        </div>
+            )}
+        </div >
 
         {/* Bottom Control Bar */}
-        <div style={{
+        < div style={{
           borderTop: '1px solid var(--border)',
           backgroundColor: 'var(--bg-secondary)',
           padding: '24px'
@@ -1090,16 +1146,16 @@ function App() {
               </div>
             </div>
           </div>
-        </div>
+        </div >
 
-      </div>
+      </div >
 
       <style>{`
         .image-container:hover .image-overlay {
           opacity: 1 !important;
         }
       `}</style>
-    </div>
+    </div >
   )
 }
 

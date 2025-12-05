@@ -244,46 +244,68 @@ async def list_available_models():
         files = list_repo_files(repo_id)
     except Exception as e:
         print(f"Error listing repo files: {e}")
-        # Return hardcoded list as fallback
+        # Return hardcoded list as fallback (sizes from AaryanK repo)
         return {
             "models": [
-                {"filename": "z_image_turbo-Q4_K_M.gguf", "size_gb": 5.2, "quantization": "Q4_K_M (4-bit)", "description": "Balanced 4-bit, good quality/size trade-off"},
-                {"filename": "z_image_turbo-Q5_K_M.gguf", "size_gb": 6.4, "quantization": "Q5_K_M (5-bit)", "description": "Higher quality 5-bit quantization"},
-                {"filename": "z_image_turbo-Q6_K.gguf", "size_gb": 7.6, "quantization": "Q6_K (6-bit)", "description": "High quality 6-bit, near full precision"},
-                {"filename": "z_image_turbo-Q8_0.gguf", "size_gb": 9.8, "quantization": "Q8_0 (8-bit)", "description": "Very high quality 8-bit quantization"},
+                {"filename": "z_image_turbo-Q3_K_S.gguf", "size_gb": 3.79, "quantization": "Q3_K_S (3-bit)", "description": "3-bit small, fastest"},
+                {"filename": "z_image_turbo-Q4_K_M.gguf", "size_gb": 4.98, "quantization": "Q4_K_M (4-bit)", "description": "4-bit medium, recommended"},
+                {"filename": "z_image_turbo-Q5_K_M.gguf", "size_gb": 5.52, "quantization": "Q5_K_M (5-bit)", "description": "5-bit medium, good quality"},
+                {"filename": "z_image_turbo-Q6_K.gguf", "size_gb": 5.91, "quantization": "Q6_K (6-bit)", "description": "6-bit, near lossless"},
+                {"filename": "z_image_turbo-Q8_0.gguf", "size_gb": 7.22, "quantization": "Q8_0 (8-bit)", "description": "8-bit, very high quality"},
+                {"filename": "z_image_turbo-bf16.gguf", "size_gb": 12.3, "quantization": "bf16 (16-bit)", "description": "BFloat16, maximum quality"},
             ],
             "repo_id": repo_id,
             "note": "Using cached model list"
         }
 
+    # GGUF quantization metadata - sizes from AaryanK/Z-Image-Turbo-GGUF repo
+    quant_info = {
+        # 3-bit quantizations (smallest)
+        "Q3_K_S": {"bits": 3, "size_gb": 3.79, "desc": "3-bit small, fastest"},
+        "Q3_K_M": {"bits": 3, "size_gb": 4.12, "desc": "3-bit medium"},
+        "Q3_K": {"bits": 3, "size_gb": 4.12, "desc": "3-bit standard"},
+        # 4-bit quantizations (good balance)
+        "Q4_0": {"bits": 4, "size_gb": 4.59, "desc": "4-bit legacy"},
+        "Q4_1": {"bits": 4, "size_gb": 4.85, "desc": "4-bit improved"},
+        "Q4_K_S": {"bits": 4, "size_gb": 4.66, "desc": "4-bit small K-quant"},
+        "Q4_K_M": {"bits": 4, "size_gb": 4.98, "desc": "4-bit medium, recommended"},
+        # 5-bit quantizations (higher quality)
+        "Q5_0": {"bits": 5, "size_gb": 5.26, "desc": "5-bit legacy"},
+        "Q5_1": {"bits": 5, "size_gb": 5.53, "desc": "5-bit improved"},
+        "Q5_K_S": {"bits": 5, "size_gb": 5.19, "desc": "5-bit small K-quant"},
+        "Q5_K_M": {"bits": 5, "size_gb": 5.52, "desc": "5-bit medium, good quality"},
+        # 6-bit quantizations
+        "Q6_K": {"bits": 6, "size_gb": 5.91, "desc": "6-bit, near lossless"},
+        # 8-bit quantizations
+        "Q8_0": {"bits": 8, "size_gb": 7.22, "desc": "8-bit, very high quality"},
+        # Full precision
+        "bf16": {"bits": 16, "size_gb": 12.3, "desc": "BFloat16, maximum quality"},
+        "f16": {"bits": 16, "size_gb": 12.3, "desc": "Float16, maximum quality"},
+    }
+
     # Filter for GGUF files and add metadata
     gguf_models = []
     for file in files:
         if file.endswith(".gguf"):
-            quant = "Unknown"
-            size_gb = 0.0
-            desc = ""
+            # Extract quantization type from filename
+            # Sort keys by length (longest first) to match more specific patterns first
+            # e.g., "Q4_K_M" should match before "Q4_K"
+            quant_type = None
+            for q in sorted(quant_info.keys(), key=len, reverse=True):
+                if q in file or q.lower() in file.lower():
+                    quant_type = q
+                    break
 
-            if "Q4_K_M" in file:
-                quant = "Q4_K_M (4-bit)"
-                size_gb = 5.2
-                desc = "Balanced 4-bit, good quality/size trade-off"
-            elif "Q5_K_M" in file:
-                quant = "Q5_K_M (5-bit)"
-                size_gb = 6.4
-                desc = "Higher quality 5-bit quantization"
-            elif "Q6_K" in file:
-                quant = "Q6_K (6-bit)"
-                size_gb = 7.6
-                desc = "High quality 6-bit, near full precision"
-            elif "Q8_0" in file:
-                quant = "Q8_0 (8-bit)"
-                size_gb = 9.8
-                desc = "Very high quality 8-bit quantization"
-            elif "f16" in file.lower():
-                quant = "FP16"
-                size_gb = 12.0
-                desc = "Full half-precision, maximum quality"
+            if quant_type and quant_type in quant_info:
+                info = quant_info[quant_type]
+                quant = f"{quant_type} ({info['bits']}-bit)"
+                size_gb = info["size_gb"]
+                desc = info["desc"]
+            else:
+                # Fallback for unrecognized formats
+                quant = file.replace("z_image_turbo-", "").replace(".gguf", "")
+                size_gb = 0.0
+                desc = "Unknown quantization"
 
             gguf_models.append({
                 "filename": file,
@@ -291,6 +313,9 @@ async def list_available_models():
                 "quantization": quant,
                 "description": desc
             })
+
+    # Sort by size (smallest to largest)
+    gguf_models.sort(key=lambda x: (x["size_gb"], x["filename"]))
 
     return {"models": gguf_models, "repo_id": repo_id}
 

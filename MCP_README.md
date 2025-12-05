@@ -9,16 +9,17 @@ A production-ready MCP (Model Context Protocol) server for AI image generation u
 1. [Quick Start](#quick-start)
 2. [Prerequisites](#prerequisites)
 3. [Installation](#installation)
-4. [Server Configuration](#server-configuration)
-5. [Client Configuration](#client-configuration)
+4. [GGUF Quantized Models](#gguf-quantized-models)
+5. [Server Configuration](#server-configuration)
+6. [Client Configuration](#client-configuration)
    - [Claude Desktop](#claude-desktop-setup)
    - [LM Studio](#lm-studio-setup)
    - [Other MCP Clients](#other-mcp-clients)
-6. [Available Tools](#available-tools)
-7. [Troubleshooting](#troubleshooting)
-8. [Performance Optimization](#performance-optimization)
-9. [Security Considerations](#security-considerations)
-10. [Development](#development)
+7. [Available Tools](#available-tools)
+8. [Troubleshooting](#troubleshooting)
+9. [Performance Optimization](#performance-optimization)
+10. [Security Considerations](#security-considerations)
+11. [Development](#development)
 
 ---
 
@@ -44,13 +45,15 @@ python backend/mcp_server.py --transport stdio
 
 ### System Requirements
 
-| Requirement | Minimum | Recommended |
-|-------------|---------|-------------|
-| **GPU VRAM** | 8 GB | 12+ GB |
-| **System RAM** | 16 GB | 32 GB |
-| **Disk Space** | 15 GB | 20 GB |
-| **Python** | 3.10+ | 3.10+ |
-| **CUDA** | 11.8+ | 12.0+ |
+| Requirement | Minimum (Full Model) | Minimum (GGUF Q4) | Recommended |
+|-------------|----------------------|-------------------|-------------|
+| **GPU VRAM** | 8 GB | 6 GB | 12+ GB |
+| **System RAM** | 16 GB | 16 GB | 32 GB |
+| **Disk Space** | 15 GB | 5 GB | 20 GB |
+| **Python** | 3.10+ | 3.10+ | 3.10+ |
+| **CUDA** | 11.8+ | 11.8+ | 12.0+ |
+
+> **Note:** GGUF quantized models significantly reduce VRAM and disk requirements. See [GGUF Quantized Models](#gguf-quantized-models) for details.
 
 ### Software Dependencies
 
@@ -87,15 +90,17 @@ Create or edit `config.json` in the project root:
 {
   "cache_dir": "./models",
   "model_id": "Tongyi-MAI/Z-Image-Turbo",
+  "gguf_filename": null,
   "cpu_offload": false
 }
 ```
 
 | Option | Description |
 |--------|-------------|
-| `cache_dir` | Where to store the downloaded model (~12GB) |
-| `model_id` | HuggingFace model identifier |
-| `cpu_offload` | Set `true` if you have limited GPU memory |
+| `cache_dir` | Where to store the downloaded model (~12GB for full, ~4-8GB for GGUF) |
+| `model_id` | HuggingFace model identifier (use `AaryanK/Z-Image-Turbo-GGUF` for GGUF) |
+| `gguf_filename` | GGUF file to use (e.g., `z_image_turbo-Q4_K_M.gguf`). Set to `null` for full model |
+| `cpu_offload` | Set `true` if you have limited GPU memory (auto-enabled for GGUF) |
 
 ### Step 4: Test the Installation
 
@@ -110,6 +115,88 @@ Eager loading model at startup...
 Loading Z-Image-Turbo model... (this may take 30-60 seconds on first run)
 Model loaded on cuda (GPU memory: X.XX GB)
 Model ready! Server is accepting requests.
+```
+
+---
+
+## GGUF Quantized Models
+
+GGUF (GPT-Generated Unified Format) allows you to run quantized versions of the Z-Image-Turbo model with significantly reduced VRAM and disk requirements.
+
+### Available GGUF Models
+
+Models are available from `AaryanK/Z-Image-Turbo-GGUF`:
+
+| Model | Size | Bits | Quality | Use Case |
+|-------|------|------|---------|----------|
+| `z_image_turbo-Q3_K_S.gguf` | 3.79 GB | 3-bit | Good | Lowest VRAM, fastest |
+| `z_image_turbo-Q4_K_M.gguf` | 4.98 GB | 4-bit | Great | **Recommended balance** |
+| `z_image_turbo-Q5_K_M.gguf` | 5.52 GB | 5-bit | Very Good | Higher quality |
+| `z_image_turbo-Q6_K.gguf` | 5.91 GB | 6-bit | Excellent | Near lossless |
+| `z_image_turbo-Q8_0.gguf` | 7.22 GB | 8-bit | Near Perfect | Very high quality |
+| `z_image_turbo-bf16.gguf` | 12.3 GB | 16-bit | Maximum | Full precision |
+
+### Configuring GGUF via MCP
+
+Use the `update_model_config` tool to switch to a GGUF model:
+
+```json
+{
+  "model_id": "AaryanK/Z-Image-Turbo-GGUF",
+  "gguf_filename": "z_image_turbo-Q4_K_M.gguf"
+}
+```
+
+Or manually edit `config.json`:
+
+```json
+{
+  "cache_dir": "./models",
+  "model_id": "AaryanK/Z-Image-Turbo-GGUF",
+  "gguf_filename": "z_image_turbo-Q4_K_M.gguf",
+  "cpu_offload": false
+}
+```
+
+### GGUF Technical Details
+
+- **How it works:** GGUF contains only the quantized transformer weights. The text encoder and other components are loaded from the original `Tongyi-MAI/Z-Image-Turbo` model automatically.
+- **CPU Offload:** Automatically enabled for GGUF models (recommended by diffusers library).
+- **First load:** Downloads both the GGUF file and the original model components (~additional 2-3GB for text encoder).
+- **Requires:** Latest diffusers from git (`pip install git+https://github.com/huggingface/diffusers.git`).
+
+### Switching Back to Full Model
+
+To return to the full-precision model:
+
+```json
+{
+  "model_id": "Tongyi-MAI/Z-Image-Turbo",
+  "gguf_filename": null
+}
+```
+
+### GGUF Workflow via MCP Tools
+
+AI assistants can manage GGUF models using these MCP tools:
+
+1. **List available models**: `list_available_gguf_models` - See all GGUF variants with sizes
+2. **Check downloads**: `list_downloaded_gguf_models` - See what's already cached locally
+3. **Download a model**: `download_gguf_model` - Download a specific GGUF file
+4. **Activate model**: `update_model_config` - Just set `gguf_filename` to switch
+5. **Verify**: `get_model_info` - Check current GGUF status
+
+**Example conversation:**
+```
+User: "Switch to a smaller model to save VRAM"
+Assistant: [calls list_available_gguf_models]
+Assistant: "I see Q4_K_M (4.98 GB) is recommended. Let me check if it's downloaded."
+Assistant: [calls list_downloaded_gguf_models]
+Assistant: "It's not downloaded yet. Downloading now..."
+Assistant: [calls download_gguf_model with filename="z_image_turbo-Q4_K_M.gguf"]
+Assistant: "Downloaded! Now activating..."
+Assistant: [calls update_model_config with gguf_filename="z_image_turbo-Q4_K_M.gguf"]
+Assistant: "Done! Now using Q4_K_M quantization (~5GB VRAM instead of ~8GB)"
 ```
 
 ---
@@ -334,12 +421,21 @@ Get information about the loaded model, GPU, and configuration.
 **Returns:**
 ```json
 {
-  "model_id": "Tongyi-MAI/Z-Image-Turbo",
+  "model_id": "AaryanK/Z-Image-Turbo-GGUF",
+  "cache_dir": "./models",
+  "cpu_offload": false,
   "device": "cuda",
   "is_loaded": true,
+  "cuda_available": true,
+  "gguf": {
+    "enabled": true,
+    "filename": "z_image_turbo-Q4_K_M.gguf",
+    "repo_id": "AaryanK/Z-Image-Turbo-GGUF",
+    "note": "GGUF models use less VRAM with quantized weights"
+  },
   "gpu_name": "NVIDIA GeForce RTX 4090",
   "gpu_memory_total_gb": 24.0,
-  "gpu_memory_allocated_gb": 8.45,
+  "gpu_memory_allocated_gb": 5.2,
   "default_settings": {
     "width": 1024,
     "height": 1024,
@@ -359,11 +455,109 @@ Get information about the loaded model, GPU, and configuration.
 
 Update model configuration (requires reload).
 
-**Parameters:**
-- `cache_dir` (string, optional): Model cache directory
-- `cpu_offload` (boolean, optional): Enable CPU offload
+When setting `gguf_filename`, the `model_id` is automatically configured - you only need to specify the GGUF filename.
 
-### 4. Resource: `image://examples`
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `cache_dir` | string | Model cache directory |
+| `cpu_offload` | boolean | Enable CPU offload for memory optimization |
+| `gguf_filename` | string | GGUF file to use, or `"none"` for full model |
+
+**Example - Switch to GGUF:**
+```json
+{
+  "gguf_filename": "z_image_turbo-Q4_K_M.gguf"
+}
+```
+
+**Example - Switch back to full model:**
+```json
+{
+  "gguf_filename": "none"
+}
+```
+
+### 4. `list_available_gguf_models`
+
+List all available GGUF quantized models from HuggingFace.
+
+**Returns:**
+```json
+{
+  "models": [
+    {
+      "filename": "z_image_turbo-Q3_K_S.gguf",
+      "size_gb": 3.79,
+      "quantization": "Q3_K_S (3-bit)",
+      "description": "3-bit small, fastest"
+    },
+    {
+      "filename": "z_image_turbo-Q4_K_M.gguf",
+      "size_gb": 4.98,
+      "quantization": "Q4_K_M (4-bit)",
+      "description": "4-bit medium, recommended"
+    }
+  ],
+  "repo_id": "AaryanK/Z-Image-Turbo-GGUF",
+  "current_model": "z_image_turbo-Q4_K_M.gguf",
+  "tip": "Use download_gguf_model to download, then update_model_config to switch"
+}
+```
+
+### 5. `list_downloaded_gguf_models`
+
+List GGUF models already downloaded to your cache directory.
+
+**Returns:**
+```json
+{
+  "downloaded_models": [
+    {
+      "filename": "z_image_turbo-Q4_K_M.gguf",
+      "path": "/path/to/cache/z_image_turbo-Q4_K_M.gguf",
+      "size_gb": 4.98,
+      "quantization": "Q4_K_M"
+    }
+  ],
+  "count": 1,
+  "cache_dir": "./models",
+  "current_active": "z_image_turbo-Q4_K_M.gguf",
+  "tip": "Use update_model_config with gguf_filename to switch models"
+}
+```
+
+### 6. `download_gguf_model`
+
+Download a specific GGUF model from HuggingFace.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `filename` | string | ✅ | GGUF filename (e.g., `z_image_turbo-Q4_K_M.gguf`) |
+
+**Example:**
+```json
+{
+  "filename": "z_image_turbo-Q4_K_M.gguf"
+}
+```
+
+**Returns:**
+```json
+{
+  "status": "success",
+  "filename": "z_image_turbo-Q4_K_M.gguf",
+  "path": "/path/to/cache/z_image_turbo-Q4_K_M.gguf",
+  "size_gb": 4.98,
+  "message": "Downloaded z_image_turbo-Q4_K_M.gguf (4.98 GB)",
+  "next_step": "Use update_model_config with gguf_filename='z_image_turbo-Q4_K_M.gguf' to activate"
+}
+```
+
+### 7. Resource: `image://examples`
 
 Access curated example prompts and tips.
 
@@ -416,6 +610,30 @@ Access curated example prompts and tips.
 2. Verify disk space for model cache
 3. Set `model_ttl_minutes: 0` to prevent auto-unload
 
+### ❌ GGUF loading fails with "No module named 'gguf'"
+
+**Cause:** The `gguf` package is not installed.
+
+**Solution:**
+```bash
+pip install gguf
+```
+
+### ❌ GGUF loading fails with tensor/shape errors
+
+**Cause:** Using an older version of diffusers that doesn't support GGUF for ZImage.
+
+**Solution:**
+```bash
+pip install git+https://github.com/huggingface/diffusers.git
+```
+
+### ❌ GGUF model takes long to load first time
+
+**Cause:** First load downloads both the GGUF file AND original model components (text encoder).
+
+**Solution:** This is normal - subsequent loads will be faster as files are cached.
+
 ### Viewing Logs
 
 **Claude Desktop logs (Windows):**
@@ -440,9 +658,16 @@ Access curated example prompts and tips.
 
 ### Memory Management
 
+**Full Model:**
 - **~8GB VRAM** required when model is loaded
 - Use `model_ttl_minutes: 10` to free memory when idle
 - Enable `cpu_offload` for GPUs with less than 8GB VRAM
+
+**GGUF Models:**
+- **~4-6GB VRAM** for Q4/Q5 quantizations
+- **~3.5GB VRAM** for Q3 quantizations
+- CPU offload automatically enabled for optimal performance
+- Best choice for GPUs with 6-8GB VRAM
 
 ### Generation Speed by Dimension
 
