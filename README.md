@@ -1,6 +1,6 @@
 # Z-Image-Turbo
 
-## **Update:** MCP Server support! [Setup Guide](MCP_README.md)
+## ✨ **Update:** MCP Server support! [Setup Guide](MCP_README.md)
 
 > A professional web interface for the Tongyi-MAI Z-Image-Turbo model — lightning-fast text-to-image generation with 6B parameters.
 
