@@ -129,7 +129,7 @@ Edit `backend/mcp_config.json` to customize server behavior:
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| `eager_load` | Load model at startup (or use `--eager-load` flag) | `false` |
+| `eager_load` | **Default is lazy loading** (model loads on first request). Set to `true` or use `--eager-load` flag to load model at startup. | `false` |
 | `model_ttl_minutes` | Auto-unload after N minutes idle (0 = never) | `0` |
 | `max_concurrent_requests` | Limit parallel generation (prevents GPU OOM) | `1` |
 | `log_level` | Logging verbosity (DEBUG/INFO/WARNING/ERROR) | `"INFO"` |
