@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Z-Image-Turbo Studio</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #050505;
+            --bg-secondary: #0f0f0f;
+            --bg-tertiary: #141414;
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            --text-muted: #52525b;
+            --border: #27272a;
+            --border-light: #3f3f46;
+            --radius-sm: 6px;
+            --radius-md: 12px;
+            --success: #22c55e;
+            --error: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 280px;
+            background-color: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .brand-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--text-primary);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: var(--bg-primary);
+        }
+
+        .brand-text h1 {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .brand-text p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .connection-status {
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            background-color: var(--bg-tertiary);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: var(--error);
+            transition: all 0.3s;
+        }
+
+        .status-dot.connected {
+            background-color: var(--success);
+        }
+
+        .tools-nav {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .nav-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            padding-left: 0.75rem;
+        }
+
+        .tool-btn {
+            width: 100%;
+            text-align: left;
+            padding: 0.75rem;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .tool-btn:hover {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .tool-btn.active {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-color: var(--border);
+        }
+
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .toolbar {
+            height: 64px;
+            border-bottom: 1px solid var(--border);
+            padding: 0 2rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .workspace {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            overflow: hidden;
+        }
+
+        .editor-section {
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            background-color: var(--bg-secondary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .section-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .json-editor {
+            flex: 1;
+            background-color: var(--bg-primary);
+            border: none;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            padding: 1.5rem;
+            resize: none;
+            outline: none;
+        }
+
+        .action-bar {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border);
+            background-color: var(--bg-secondary);
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border-radius: var(--radius-sm);
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background-color: var(--text-primary);
+            color: var(--bg-primary);
+        }
+
+        .btn-primary:hover {
+            background-color: #e4e4e7;
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .preview-section {
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-secondary);
+        }
+
+        .output-container {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 4rem 2rem;
+        }
+
+        .result-image {
+            max-width: 100%;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            margin-bottom: 1rem;
+        }
+
+        .json-output {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            white-space: pre-wrap;
+            word-break: break-all;
+            background: var(--bg-tertiary);
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+        }
+
+        .raw-toggle {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 0.75rem 1rem;
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 100;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            border-left: 3px solid var(--success);
+        }
+
+        .toast.error {
+            border-left: 3px solid var(--error);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar">
+        <div class="brand">
+            <div class="brand-icon">Z</div>
+            <div class="brand-text">
+                <h1>Z-Image-Turbo</h1>
+                <p>MCP Studio</p>
+            </div>
+        </div>
+
+        <div class="connection-status">
+            <span id="statusText">Connecting...</span>
+            <div id="statusDot" class="status-dot"></div>
+        </div>
+
+        <div class="tools-nav">
+            <div class="nav-label">Available Tools</div>
+            <div id="toolsList">
+                <div style="padding: 1rem; text-align: center;">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="toolbar">
+            <h2 id="currentToolName" style="font-size: 1.1rem;">Select a Tool</h2>
+        </div>
+
+        <div class="workspace">
+            <div class="editor-section">
+                <div class="section-header">
+                    <span class="section-title">Parameters (JSON)</span>
+                </div>
+                <textarea id="jsonEditor" class="json-editor" spellcheck="false"
+                    placeholder="// Select a tool..."></textarea>
+                <div class="action-bar">
+                    <button id="executeBtn" class="btn btn-primary" onclick="executeTool()" disabled>
+                        <span>Run Tool</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="preview-section">
+                <div class="section-header">
+                    <span class="section-title">Output</span>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <button id="rawToggleBtn" class="raw-toggle" onclick="toggleRaw()" style="display: none;">View
+                            Raw</button>
+                        <span id="execTime" style="font-size: 0.75rem; color: var(--text-muted);"></span>
+                    </div>
+                </div>
+                <div class="output-container" id="outputContent">
+                    <div class="empty-state">
+                        <p>Run a tool to see output</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">
+        <span id="toastMessage">Notification</span>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8001';
+        let currentTool = null;
+        let lastResult = null;
+        let showingRaw = false;
+
+        window.addEventListener('load', () => checkConnection());
+
+        async function checkConnection() {
+            try {
+                const res = await fetch(`${API_BASE}/health`);
+                if (res.ok) {
+                    document.getElementById('statusText').textContent = 'Connected';
+                    document.getElementById('statusDot').classList.add('connected');
+                    loadTools();
+                }
+            } catch (e) {
+                document.getElementById('statusText').textContent = 'Disconnected';
+                setTimeout(checkConnection, 3000);
+            }
+        }
+
+        async function loadTools() {
+            try {
+                const res = await fetch(`${API_BASE}/api/tools/list`);
+                const data = await res.json();
+                const container = document.getElementById('toolsList');
+                container.innerHTML = '';
+                data.tools.forEach(tool => {
+                    const btn = document.createElement('button');
+                    btn.className = 'tool-btn';
+                    btn.innerHTML = `<span>${tool.name}</span>`;
+                    btn.onclick = () => selectTool(tool, btn);
+                    container.appendChild(btn);
+                });
+            } catch (e) {
+                console.error('Failed to load tools:', e);
+            }
+        }
+
+        function selectTool(tool, btnElement) {
+            currentTool = tool;
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            btnElement.classList.add('active');
+            document.getElementById('currentToolName').textContent = tool.name;
+            document.getElementById('executeBtn').disabled = false;
+
+            const template = {};
+            const schema = tool.inputSchema?.properties || {};
+            Object.keys(schema).forEach(key => {
+                const prop = schema[key];
+                template[key] = prop.default !== undefined ? prop.default : (prop.type === 'integer' ? 0 : "");
+            });
+
+            if (tool.name === 'generate_image') {
+                Object.assign(template, {
+                    prompt: "A futuristic city with flying cars, neon lights, cinematic",
+                    width: 1024,
+                    height: 1024,
+                    num_inference_steps: 8
+                });
+            }
+
+            document.getElementById('jsonEditor').value = JSON.stringify(template, null, 4);
+        }
+
+        async function executeTool() {
+            if (!currentTool) return;
+
+            const btn = document.getElementById('executeBtn');
+            const output = document.getElementById('outputContent');
+            const timeDisplay = document.getElementById('execTime');
+
+            let args;
+            try {
+                args = JSON.parse(document.getElementById('jsonEditor').value);
+            } catch (e) {
+                showToast('Invalid JSON', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div><span>Running...</span>';
+            output.innerHTML = '<div class="empty-state"><p>Generating...</p></div>';
+
+            const start = performance.now();
+
+            try {
+                const res = await fetch(`${API_BASE}/api/tools/call`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: currentTool.name, arguments: args })
+                });
+
+                lastResult = await res.json();
+                timeDisplay.textContent = `${((performance.now() - start) / 1000).toFixed(2)}s`;
+
+                if (res.ok) {
+                    displayResult(lastResult);
+                    showToast('Success', 'success');
+                    document.getElementById('rawToggleBtn').style.display = 'block';
+                } else {
+                    throw new Error(lastResult.error || 'Unknown error');
+                }
+            } catch (e) {
+                output.innerHTML = `<div class="json-output" style="color: var(--error)">Error: ${e.message}</div>`;
+                showToast('Failed', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>Run Tool</span>';
+            }
+        }
+
+        function displayResult(result) {
+            const container = document.getElementById('outputContent');
+
+            if (showingRaw) {
+                container.innerHTML = `<div class="json-output">${JSON.stringify(result, null, 2)}</div>`;
+                return;
+            }
+
+            const isBase64 = (str) => typeof str === 'string' && str.length > 100 && /^[A-Za-z0-9+/=]+$/.test(str);
+
+            let imageData = null;
+            if (result?.content) {
+                const flatten = (arr) => {
+                    if (!Array.isArray(arr)) return [];
+                    return arr.flatMap(item => Array.isArray(item) ? flatten(item) : [item]);
+                };
+
+                for (const item of flatten(result.content)) {
+                    if (item?.text && isBase64(item.text)) { imageData = item.text; break; }
+                    if (item?.result && isBase64(item.result)) { imageData = item.result; break; }
+                    if (item?.data && isBase64(item.data)) { imageData = item.data; break; }
+                }
+            }
+
+            if (!imageData && isBase64(result)) imageData = result;
+
+            if (imageData) {
+                container.innerHTML = `<img src="data:image/png;base64,${imageData}" class="result-image" alt="Generated">`;
+            } else {
+                container.innerHTML = `<div class="json-output">${JSON.stringify(result, null, 2)}</div>`;
+            }
+        }
+
+        function toggleRaw() {
+            showingRaw = !showingRaw;
+            document.getElementById('rawToggleBtn').textContent = showingRaw ? 'View Image' : 'View Raw';
+            if (lastResult) displayResult(lastResult);
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            const msg = document.getElementById('toastMessage');
+            toast.className = `toast ${type} show`;
+            msg.textContent = message;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+    </script>
+</body>
+
+</html>

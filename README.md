@@ -60,6 +60,182 @@ Open **`http://localhost:5173`** in your browser and start generating!
 
 ---
 
+## 🔌 MCP Server (Model Context Protocol)
+
+Z-Image-Turbo now includes a powerful **MCP server** that exposes image generation capabilities through the standardized [Model Context Protocol](https://modelcontextprotocol.io). This allows AI assistants (like Claude), automation tools, and other MCP-compatible clients to generate images programmatically.
+
+### Why Use the MCP Server?
+
+- **AI Integration**: Let Claude or other AI assistants generate images directly during conversations
+- **Automation**: Build automated workflows that include image generation
+- **Remote Access**: Generate images from web clients or remote services (HTTP mode)
+- **Standardized API**: Use the same protocol across different AI tools and platforms
+
+### Quick Start with MCP
+
+**1. Install MCP dependencies:**
+```bash
+cd backend
+pip install -r requirements.txt
+```
+
+**2. Run the MCP server:**
+
+For local integration (Claude Desktop, MCP Inspector):
+```bash
+cd backend
+./run_mcp.sh --stdio
+```
+
+For HTTP/web clients and remote access:
+```bash
+cd backend
+./run_mcp.sh --http --port 8001
+# Server available at http://localhost:8001/mcp
+```
+
+**3. Configuration:**
+Edit `backend/mcp_config.json` to set default transport mode and port:
+```json
+{
+  "transport": "stdio",
+  "host": "0.0.0.0",
+  "port": 8001
+}
+```
+
+### Available MCP Tools
+
+| Tool | Description | Key Parameters |
+|------|-------------|----------------|
+| **`generate_image`** | Generate images from text prompts | `prompt`, `width`, `height`, `num_inference_steps`, `guidance_scale`, `seed` |
+| **`get_model_info`** | Get model status and configuration | None |
+| **`update_model_config`** | Modify model settings dynamically | `cache_dir`, `cpu_offload` |
+| **Resource: `image://examples`** | Access curated example prompts and tips | None |
+
+### ⚙️ Production Configuration
+
+Edit `backend/mcp_config.json` to customize server behavior:
+
+```json
+{
+  "transport": "stdio",
+  "eager_load": false,
+  "model_ttl_minutes": 0,
+  "max_concurrent_requests": 1,
+  "log_level": "INFO"
+}
+```
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `eager_load` | **Default is lazy loading** (model loads on first request). Set to `true` or use `--eager-load` flag to load model at startup. | `false` |
+| `model_ttl_minutes` | Auto-unload after N minutes idle (0 = never) | `0` |
+| `max_concurrent_requests` | Limit parallel generation (prevents GPU OOM) | `1` |
+| `log_level` | Logging verbosity (DEBUG/INFO/WARNING/ERROR) | `"INFO"` |
+
+### Usage Example
+
+Once connected to Claude Desktop or another MCP client:
+
+```
+You: "Generate an image of a serene mountain landscape at sunset"
+
+Claude: [Uses generate_image tool]
+{
+  "prompt": "A serene mountain landscape at sunset with vibrant orange and purple skies",
+  "width": 1024,
+  "height": 768,
+  "num_inference_steps": 8
+}
+
+[Returns rendered image]
+```
+
+### Transport Modes Comparison
+
+| Feature | Stdio Mode | HTTP/SSE Mode |
+|---------|-----------|---------------|
+| **Use Case** | Local desktop integration | Web clients, remote access |
+| **Best For** | Claude Desktop, MCP Inspector, LM Studio | Production APIs, multi-user |
+| **Network** | Local only | Network accessible |
+| **Setup** | Simpler | Requires port configuration |
+
+### LM Studio Integration
+
+Add to your LM Studio MCP config file:
+
+```json
+{
+  "mcpServers": {
+    "z-image-turbo": {
+      "command": "C:/path/to/z-image-turbo/venv/Scripts/python.exe",
+      "args": [
+        "C:/path/to/z-image-turbo/backend/mcp_server.py",
+        "--transport",
+        "stdio",
+        "--eager-load"
+      ],
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      },
+      "timeout": 300000
+    }
+  }
+}
+```
+
+**Important**: 
+- Replace `C:/path/to/z-image-turbo` with your actual installation path
+- Use forward slashes `/` even on Windows
+- Point to the **venv Python executable** (not system Python!)
+- `--eager-load` loads the model at startup (avoids timeouts)
+- `timeout: 300000` (5 minutes in ms) for model loading + generation
+
+### Claude Desktop Integration
+
+Add to your Claude Desktop config file (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS or `%APPDATA%\Claude\claude_desktop_config.json` on Windows):
+
+```json
+{
+  "mcpServers": {
+    "z-image-turbo": {
+      "command": "C:/path/to/z-image-turbo/venv/Scripts/python.exe",
+      "args": [
+        "C:/path/to/z-image-turbo/backend/mcp_server.py",
+        "--transport",
+        "stdio",
+        "--eager-load"
+      ],
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      },
+      "timeout": 300000
+    }
+  }
+}
+```
+
+**⚠️ Critical**: 
+- Use the **venv Python path**, not `"python"` (system Python won't have dependencies!)
+- `--eager-load` loads the model at startup to avoid timeout issues
+- `timeout: 300000` (5 minutes) ensures enough time for model loading
+
+After restarting Claude Desktop, you can ask Claude to generate images and it will use the MCP server automatically!
+
+### Testing Your MCP Server
+
+Test with the official MCP Inspector:
+```bash
+npx @modelcontextprotocol/inspector python backend/mcp_server.py --transport stdio
+```
+
+This opens a web interface where you can test all available tools and inspect requests/responses.
+
+📖 **Full MCP Documentation:** See [`MCP_README.md`](MCP_README.md) for detailed setup, troubleshooting, and complete deployment guide.
+
+---
+
 ## ✨ Features
 
 ### Application
@@ -68,6 +244,13 @@ Open **`http://localhost:5173`** in your browser and start generating!
 - **Fine Control** — Sliders for dimensions, inference steps, guidance scale, and seed
 - **Real-time Progress** — Live generation tracking
 - **Flexible Deployment** — Custom model cache directory, CPU offload option
+
+### MCP Server Integration
+- **🔌 Dual Transport Modes** — Support for both stdio (local) and HTTP/SSE (remote) connections
+- **🤖 AI Assistant Compatible** — Seamless integration with Claude Desktop and other MCP clients
+- **🛠️ Rich Tool Set** — Image generation, model info, configuration management, and example prompts
+- **⚙️ Configurable** — Customizable host, port, and transport settings via `mcp_config.json`
+- **🔒 Production Ready** — Stateless HTTP mode for scalable deployments
 
 ### Model (Z-Image-Turbo)
 - **⚡ Lightning Fast** — Optimized for **8-step generation**, achieving sub-second latency on enterprise GPUs.
@@ -98,6 +281,7 @@ Z-Image-Turbo represents a significant leap in efficient generative AI:
 
 - **Backend:** FastAPI, PyTorch, Diffusers, Transformers
 - **Frontend:** React, Vite, Lucide React
+- **MCP Server:** FastMCP, Starlette (supports stdio and HTTP/SSE transports)
 - **Model:** Tongyi-MAI/Z-Image-Turbo (6B parameters)
 
 ---

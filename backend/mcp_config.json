@@ -1,0 +1,67 @@
+{
+  "transport": "stdio",
+  "host": "0.0.0.0",
+  "port": 8001,
+  "eager_load": false,
+  "model_ttl_minutes": 0,
+  "max_concurrent_requests": 1,
+  "log_level": "INFO",
+  "_documentation": {
+    "transport": {
+      "description": "Communication transport mode",
+      "choices": [
+        "stdio",
+        "streamable-http"
+      ],
+      "default": "stdio",
+      "notes": [
+        "stdio: For local integrations (Claude Desktop, LM Studio, MCP Inspector)",
+        "streamable-http: For web clients and remote access via HTTP/SSE"
+      ]
+    },
+    "host": {
+      "description": "Host address for HTTP transport",
+      "default": "0.0.0.0",
+      "note": "Only used when transport is 'streamable-http'"
+    },
+    "port": {
+      "description": "Port number for HTTP transport",
+      "default": 8001,
+      "note": "Only used when transport is 'streamable-http'"
+    },
+    "eager_load": {
+      "description": "Load model at server startup instead of on first request",
+      "default": false,
+      "notes": [
+        "false: Model loads on first request (default - saves memory)",
+        "true: Model loads at startup (use --eager-load flag or set this to true)"
+      ]
+    },
+    "model_ttl_minutes": {
+      "description": "Unload model after N minutes of inactivity to free memory",
+      "default": 0,
+      "notes": [
+        "0: Never unload (recommended for dedicated use)",
+        ">0: Unload after N minutes of no requests (saves ~8GB VRAM when idle)"
+      ]
+    },
+    "max_concurrent_requests": {
+      "description": "Maximum concurrent image generation requests",
+      "default": 1,
+      "notes": [
+        "1: Process one image at a time (safest, prevents GPU OOM)",
+        ">1: Allow parallel generation (requires more VRAM)"
+      ]
+    },
+    "log_level": {
+      "description": "Logging verbosity level",
+      "choices": [
+        "DEBUG",
+        "INFO",
+        "WARNING",
+        "ERROR"
+      ],
+      "default": "INFO"
+    }
+  }
+}
